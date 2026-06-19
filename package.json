@@ -10,7 +10,9 @@
     "demo:approval": "tsx examples/approval-demo.ts",
     "demo:saga": "tsx examples/saga-demo.ts",
     "demo:workflow": "tsx examples/workflow-demo.ts",
-    "migrate": "node --env-file=.env scripts/migrate.mjs"
+    "migrate": "node --env-file=.env scripts/migrate.mjs",
+    "migrate:status": "node --env-file=.env scripts/migrate.mjs --status",
+    "db:smoke": "node --env-file=.env node_modules/tsx/dist/cli.mjs examples/db-smoke.ts"
   },
   "packageManager": "pnpm@9.12.0",
   "license": "MIT",
