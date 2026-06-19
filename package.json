@@ -1,0 +1,20 @@
+{
+  "name": "belay-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Belay monorepo — reliability for AI agent actions.",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "demo": "tsx examples/refund-demo.ts",
+    "migrate": "node --env-file=.env scripts/migrate.mjs"
+  },
+  "packageManager": "pnpm@9.12.0",
+  "license": "MIT",
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  },
+  "dependencies": {
+    "pg": "^8.12.0"
+  }
+}
