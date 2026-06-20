@@ -1,0 +1,51 @@
+{
+  "name": "@belay/mcp",
+  "version": "0.6.1",
+  "description": "Belay reliability adapter for the Model Context Protocol (MCP) TypeScript SDK: exactly-once tool execution, durable ledger, budgets, rate limits, and human approval gates for MCP servers.",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "tsx test/mcp.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [
+    "belay",
+    "mcp",
+    "model-context-protocol",
+    "modelcontextprotocol",
+    "agents",
+    "tools",
+    "idempotency",
+    "reliability",
+    "human-in-the-loop",
+    "approvals"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "belay": "workspace:*"
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/sdk": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@modelcontextprotocol/sdk": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}

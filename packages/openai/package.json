@@ -1,0 +1,34 @@
+{
+	"name": "@belay/openai",
+	"version": "0.6.1",
+	"description": "Belay adapter for OpenAI tool calls — exactly-once, durable, policy-gated reliability for the OpenAI Agents SDK and classic function calling.",
+	"type": "module",
+	"main": "dist/index.js",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": ["dist"],
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"test": "tsx test/openai.test.ts",
+		"typecheck": "tsc -p tsconfig.json --noEmit"
+	},
+	"dependencies": {
+		"belay": "workspace:*"
+	},
+	"peerDependencies": {
+		"@openai/agents": "*",
+		"openai": "*"
+	},
+	"peerDependenciesMeta": {
+		"@openai/agents": { "optional": true },
+		"openai": { "optional": true }
+	},
+	"keywords": ["openai", "agents", "tool-calling", "idempotency", "reliability", "belay", "ai-agents"],
+	"license": "MIT"
+}

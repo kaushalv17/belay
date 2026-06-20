@@ -1,0 +1,44 @@
+{
+	"name": "@belay/adapter-vercel",
+	"version": "0.6.0",
+	"description": "Belay reliability adapter for the Vercel AI SDK — idempotency, retries, budgets, and human approvals for tool calls.",
+	"type": "module",
+	"main": "dist/index.js",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": ["dist", "README.md"],
+	"sideEffects": false,
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"test": "tsx test/smoke.ts"
+	},
+	"keywords": [
+		"belay",
+		"vercel-ai-sdk",
+		"ai",
+		"agents",
+		"reliability",
+		"idempotency",
+		"retries",
+		"human-in-the-loop"
+	],
+	"peerDependencies": {
+		"ai": ">=3",
+		"zod": ">=3"
+	},
+	"peerDependenciesMeta": {
+		"ai": { "optional": true },
+		"zod": { "optional": true }
+	},
+	"devDependencies": {
+		"tsx": "^4.0.0",
+		"typescript": "^5.4.0"
+	},
+	"license": "MIT"
+}
