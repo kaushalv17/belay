@@ -18,6 +18,28 @@ export default function LandingScripts() {
     const s = document.createElement('script')
     s.text = APP_JS
     document.body.appendChild(s)
+
+    // Paddle.js (Billing): load once per mount. When the backend returns a
+    // default-payment-link URL containing ?_ptxn=..., Paddle auto-detects it
+    // and opens the checkout overlay. Also lets us open checkout
+    // programmatically once the in-app upgrade flow is wired.
+    if (!document.getElementById('paddle-js')) {
+      const p = document.createElement('script')
+      p.id = 'paddle-js'
+      p.src = 'https://cdn.paddle.com/paddle/v2/paddle.js'
+      p.async = true
+      p.onload = () => {
+        try {
+          const Paddle = (window as any).Paddle
+          if (Paddle && typeof Paddle.Initialize === 'function') {
+            Paddle.Initialize({ token: 'live_2f6c5a2fc2044c85ff7a5fdc010' })
+          }
+        } catch (e) {
+          /* no-op: checkout simply won't open if Paddle fails to load */
+        }
+      }
+      document.head.appendChild(p)
+    }
   }, [])
   return null
 }
