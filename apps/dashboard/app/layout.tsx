@@ -22,6 +22,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 					</nav>
 				</header>
 				<main className="main">{children}</main>
+				<footer className="footer">
+					<span className="footer-brand">Quorvel</span>
+					<nav className="footer-links">
+						<a href="https://quorvel.tech" target="_blank" rel="noreferrer">Home</a>
+						<a href="https://quorvel.tech/terms" target="_blank" rel="noreferrer">Terms</a>
+						<a href="https://quorvel.tech/privacy" target="_blank" rel="noreferrer">Privacy</a>
+						<a href="https://quorvel.tech/refunds" target="_blank" rel="noreferrer">Refunds</a>
+					</nav>
+				</footer>
 			</body>
 		</html>
 	)

@@ -109,3 +109,32 @@ button:hover { filter: brightness(1.15); }
 button.upgrade { background: rgba(91,141,239,0.16); border-color: rgba(91,141,239,0.45); color: var(--accent); }
 button.upgrade:disabled { opacity: 0.6; cursor: default; }
 .upgrade-err { color: var(--red); font-size: 12px; margin-left: 8px; align-self: center; }
+
+.footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-top: 48px;
+	padding: 20px 24px;
+	border-top: 1px solid var(--border);
+	color: #6b7385;
+	font-size: 13px;
+}
+.footer-brand {
+	font-weight: 600;
+	color: #8a92a6;
+}
+.footer-links {
+	display: flex;
+	gap: 18px;
+	flex-wrap: wrap;
+}
+.footer-links a {
+	color: #6b7385;
+	text-decoration: none;
+}
+.footer-links a:hover {
+	color: var(--accent);
+}
