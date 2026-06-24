@@ -101,3 +101,11 @@ button:hover { filter: brightness(1.15); }
 .agent-card { display: block; text-decoration: none; color: inherit; }
 .agent-card:hover { border-color: var(--accent); }
 .agent-card .count { font-size: 26px; font-weight: 700; }
+
+/* Upgrade (Paddle checkout) controls in the usage bar */
+.usage-bar .stat.upgrade-cell { margin-left: auto; align-items: flex-end; }
+.upgrade-label { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+.upgrade-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+button.upgrade { background: rgba(91,141,239,0.16); border-color: rgba(91,141,239,0.45); color: var(--accent); }
+button.upgrade:disabled { opacity: 0.6; cursor: default; }
+.upgrade-err { color: var(--red); font-size: 12px; margin-left: 8px; align-self: center; }

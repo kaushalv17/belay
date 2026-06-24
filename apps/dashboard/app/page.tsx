@@ -2,6 +2,7 @@ import Link from "next/link"
 import { serverClient } from "../lib/server-client"
 import { StatusBadge } from "../components/StatusBadge"
 import { approveAction, rejectAction } from "./actions"
+import { UpgradeButton } from "../components/UpgradeButton"
 
 // Always render fresh — this is a live operational queue.
 export const dynamic = "force-dynamic"
@@ -35,6 +36,19 @@ export default async function ApprovalsPage() {
 					</b>
 					<span>actions this period ({usage.period})</span>
 				</div>
+				{usage.plan !== "scale" ? (
+					<div className="stat upgrade-cell">
+						<span className="upgrade-label">
+							{usage.plan === "free" ? "Upgrade your plan" : "Need more headroom?"}
+						</span>
+						<div className="upgrade-actions">
+							{usage.plan === "free" ? (
+								<UpgradeButton plan="pro" label="Upgrade to Pro" />
+							) : null}
+							<UpgradeButton plan="scale" label="Upgrade to Scale" />
+						</div>
+					</div>
+				) : null}
 			</div>
 
 			{queue.length === 0 ? (

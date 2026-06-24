@@ -52,6 +52,13 @@ export interface UsageSnapshot {
 	remaining: number
 }
 
+export interface CheckoutResult {
+	transactionId: string
+	checkoutUrl: string | null
+	plan: string
+	priceId: string
+}
+
 export interface QuorvelClientOptions {
 	baseUrl: string
 	apiKey: string
@@ -128,6 +135,10 @@ export class QuorvelClient {
 
 	reject(key: string, reason: string): Promise<void> {
 		return this.request("POST", `/v1/actions/${encodeURIComponent(key)}/rejected`, { reason })
+	}
+
+	checkout(plan: string): Promise<CheckoutResult> {
+		return this.request("POST", `/v1/billing/checkout`, { plan })
 	}
 
 	usage(): Promise<UsageSnapshot> {
