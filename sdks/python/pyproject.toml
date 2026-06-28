@@ -1,0 +1,17 @@
+# Python SDK skeleton (Phase 5). Publish to PyPI once the surface stabilizes.
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "quorvel"
+version = "0.1.0"
+description = "Quorvel Python SDK - track agent actions, approvals, and usage."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = ["httpx>=0.27"]
+
+[project.urls]
+Homepage = "https://quorvel.tech"
+Documentation = "https://docs.quorvel.tech"

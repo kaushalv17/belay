@@ -164,7 +164,7 @@ export function defaultDeniedResult(info: PolicyDeniedInfo): CallToolResult {
  * builds regardless of how `ApprovalRequiredError` exposes the key. */
 export async function resolvePendingKey(
 	err: any,
-	ledger: { actions: Map<string, any> },
+	ledger: any,
 	toolName: string,
 	listPendingApprovals: (ledger: any) => Promise<any[]>,
 ): Promise<string | undefined> {

@@ -1,0 +1,20 @@
+---
+title: Introduction
+description: What Quorvel is and how it works.
+---
+
+Quorvel is an agent-reliability platform: track every agent action, gate risky
+ones behind human approval, enforce per-plan usage, and see it all in a
+multi-tenant dashboard.
+
+## Core concepts
+
+- **Action** - a tracked unit of agent work with a status lifecycle
+  (pending -> running -> succeeded / failed / awaiting_approval -> approved / rejected).
+- **Org** - a tenant. Every API key and action belongs to exactly one org.
+- **API key** - `qrv_live_*` or `qrv_test_*`, created/rotated/revoked self-serve.
+- **Approval** - an action paused for a human to approve or reject.
+
+## Next
+
+Head to the [Quickstart](/quickstart).

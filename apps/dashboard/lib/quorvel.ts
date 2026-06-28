@@ -59,9 +59,53 @@ export interface CheckoutResult {
 	priceId: string
 }
 
+// ---- Phase 1/2: API keys, account, billing portal, onboarding ----
+
+export interface ApiKeyPublic {
+	id: string
+	orgId: string
+	name: string
+	keyPrefix: string
+	env: string
+	scopes: string[]
+	createdAt: string
+	lastUsedAt?: string | null
+	revokedAt?: string | null
+	createdBy?: string | null
+}
+
+export interface CreateKeyInput {
+	name?: string
+	env?: string
+	scopes?: string[]
+}
+
+export interface AuditEntry {
+	id: string
+	orgId: string
+	actorId?: string | null
+	action: string
+	target?: string | null
+	metadata?: unknown
+	createdAt: string
+}
+
+export interface MeResult {
+	org: { id: string; name: string; plan: string; createdAt: string }
+	usage: UsageSnapshot
+}
+
+/** Returns the auth headers to attach to each request (dashboard service-auth mode). */
+export type AuthHeaderProvider = () =>
+	| Promise<Record<string, string>>
+	| Record<string, string>
+
 export interface QuorvelClientOptions {
 	baseUrl: string
-	apiKey: string
+	/** SDK / Bearer mode. Provide this OR authProvider. */
+	apiKey?: string
+	/** Dashboard service-auth mode: per-request auth headers (e.g. Clerk org context). */
+	authProvider?: AuthHeaderProvider
 	fetchImpl?: FetchLike
 }
 
@@ -78,20 +122,30 @@ export class QuorvelApiError extends Error {
 
 export class QuorvelClient {
 	private readonly baseUrl: string
-	private readonly apiKey: string
+	private readonly apiKey?: string
+	private readonly authProvider?: AuthHeaderProvider
 	private readonly fetchImpl: FetchLike
 
 	constructor(opts: QuorvelClientOptions) {
 		this.baseUrl = opts.baseUrl.replace(/\/$/, "")
 		this.apiKey = opts.apiKey
+		this.authProvider = opts.authProvider
 		this.fetchImpl = opts.fetchImpl ?? globalFetch
+		if (!this.apiKey && !this.authProvider) {
+			throw new Error("QuorvelClient requires either apiKey or authProvider")
+		}
+	}
+
+	private async authHeaders(): Promise<Record<string, string>> {
+		if (this.authProvider) return this.authProvider()
+		return { authorization: `Bearer ${this.apiKey}` }
 	}
 
 	private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
 		const res = await this.fetchImpl(`${this.baseUrl}${path}`, {
 			method,
 			headers: {
-				authorization: `Bearer ${this.apiKey}`,
+				...(await this.authHeaders()),
 				"content-type": "application/json",
 			},
 			body: body === undefined ? undefined : JSON.stringify(body),
@@ -143,6 +197,60 @@ export class QuorvelClient {
 
 	usage(): Promise<UsageSnapshot> {
 		return this.request("GET", `/v1/usage`)
+	}
+
+	// Mirror/link the caller's active Clerk org (identity travels in auth headers
+	// in dashboard service-auth mode). Idempotent; returns the org's API key only
+	// the first time the org is created. Useful for the Step 5 onboarding flow.
+	provisionOrg(): Promise<{
+		orgId: string
+		created: boolean
+		apiKey?: string
+		keyPrefix?: string
+	}> {
+		return this.request("POST", `/v1/orgs/provision`, {})
+	}
+
+	// ---- Phase 1/2 account surface ----
+
+	/** Org + current-period usage for the signed-in org (billing summary). */
+	me(): Promise<MeResult> {
+		return this.request("GET", `/v1/me`)
+	}
+
+	/** List this org's API keys (secrets are never returned here). */
+	listKeys(): Promise<ApiKeyPublic[]> {
+		return this.request("GET", `/v1/account/keys`)
+	}
+
+	/** Create a new API key. The plaintext secret is returned exactly once. */
+	createKey(input: CreateKeyInput = {}): Promise<{ apiKey: string; key: ApiKeyPublic }> {
+		return this.request("POST", `/v1/account/keys`, input)
+	}
+
+	/** Rotate a key: revoke the old one and issue a replacement (secret once). */
+	rotateKey(id: string): Promise<{ apiKey: string; key: ApiKeyPublic }> {
+		return this.request("POST", `/v1/account/keys/${encodeURIComponent(id)}/rotate`, {})
+	}
+
+	/** Revoke a key immediately. */
+	revokeKey(id: string): Promise<{ revoked: boolean }> {
+		return this.request("DELETE", `/v1/account/keys/${encodeURIComponent(id)}`)
+	}
+
+	/** Audit log (who did what, when) for the org. */
+	auditLog(limit = 100): Promise<AuditEntry[]> {
+		return this.request("GET", `/v1/audit?limit=${limit}`)
+	}
+
+	/** Create a Paddle hosted billing-portal session for the org. */
+	billingPortal(): Promise<{ url: string }> {
+		return this.request("POST", `/v1/billing/portal`, {})
+	}
+
+	/** Onboarding helper: seed a few sample actions so the dashboard isn't empty. */
+	seedSample(): Promise<{ created: number }> {
+		return this.request("POST", `/v1/onboarding/sample`, {})
 	}
 }
 

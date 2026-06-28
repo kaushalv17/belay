@@ -5,6 +5,7 @@ import type {
 	ActionRecord,
 	ActionStatus,
 	ApiKeyRecord,
+	AuditEntry,
 	Membership,
 	InsertPendingInput,
 	InsertResult,
@@ -45,6 +46,14 @@ export interface Store {
 	insertApiKey(rec: ApiKeyRecord): Promise<void>
 	getApiKeyByHash(hash: string): Promise<ApiKeyRecord | undefined>
 	setOrgPlan(orgId: string, plan: string): Promise<void>
+	setOrgPaddleCustomer(orgId: string, customerId: string): Promise<void>
+	getOrgByPaddleCustomer(customerId: string): Promise<Org | undefined>
+	listApiKeys(orgId: string): Promise<ApiKeyRecord[]>
+	getApiKeyById(orgId: string, id: string): Promise<ApiKeyRecord | undefined>
+	revokeApiKey(orgId: string, id: string): Promise<boolean>
+	touchApiKeyLastUsed(keyHash: string): Promise<void>
+	insertAuditLog(entry: AuditEntry): Promise<void>
+	listAuditLog(orgId: string, limit?: number): Promise<AuditEntry[]>
 
 	getAction(orgId: string, key: string): Promise<StoredAction | undefined>
 	insertPending(orgId: string, input: InsertPendingInput): Promise<InsertResult>
@@ -96,6 +105,59 @@ export class MemStore implements Store {
 
 	async getApiKeyByHash(hash: string): Promise<ApiKeyRecord | undefined> {
 		return this.keys.get(hash)
+	}
+
+	private readonly auditEntries: AuditEntry[] = []
+
+	async setOrgPaddleCustomer(orgId: string, customerId: string): Promise<void> {
+		const o = this.orgs.get(orgId)
+		if (o) o.paddleCustomerId = customerId
+	}
+
+	async getOrgByPaddleCustomer(customerId: string): Promise<Org | undefined> {
+		for (const o of this.orgs.values()) {
+			if (o.paddleCustomerId === customerId) return o
+		}
+		return undefined
+	}
+
+	async listApiKeys(orgId: string): Promise<ApiKeyRecord[]> {
+		return [...this.keys.values()]
+			.filter((k) => k.orgId === orgId)
+			.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+	}
+
+	async getApiKeyById(orgId: string, id: string): Promise<ApiKeyRecord | undefined> {
+		for (const k of this.keys.values()) {
+			if (k.orgId === orgId && k.id === id) return k
+		}
+		return undefined
+	}
+
+	async revokeApiKey(orgId: string, id: string): Promise<boolean> {
+		for (const k of this.keys.values()) {
+			if (k.orgId === orgId && k.id === id) {
+				k.revokedAt = new Date().toISOString()
+				return true
+			}
+		}
+		return false
+	}
+
+	async touchApiKeyLastUsed(keyHash: string): Promise<void> {
+		const k = this.keys.get(keyHash)
+		if (k) k.lastUsedAt = new Date().toISOString()
+	}
+
+	async insertAuditLog(entry: AuditEntry): Promise<void> {
+		this.auditEntries.push(entry)
+	}
+
+	async listAuditLog(orgId: string, limit = 100): Promise<AuditEntry[]> {
+		return this.auditEntries
+			.filter((e) => e.orgId === orgId)
+			.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+			.slice(0, limit)
 	}
 
 	async getAction(orgId: string, key: string): Promise<StoredAction | undefined> {

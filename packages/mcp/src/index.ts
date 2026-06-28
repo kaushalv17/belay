@@ -53,4 +53,4 @@ export {
 	requireApprovalWhen,
 	denyWhen,
 } from "@quorvel/core"
-export type { Ledger, Policy } from "@quorvel/core"
+export type { LedgerStore as Ledger, Policy } from "@quorvel/core"

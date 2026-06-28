@@ -1,0 +1,6 @@
+# https://securitytxt.org/  (Phase 7 responsible disclosure)
+Contact: mailto:security@quorvel.tech
+Expires: 2027-01-01T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://app.quorvel.tech/.well-known/security.txt
+Policy: https://quorvel.tech/security

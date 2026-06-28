@@ -1,0 +1,12 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "Quorvel",
+  "colors": { "primary": "#111111", "light": "#4ade80", "dark": "#0d1117" },
+  "favicon": "/favicon.png",
+  "navigation": [
+    { "group": "Getting started", "pages": ["introduction", "quickstart"] },
+    { "group": "Concepts", "pages": ["introduction"] }
+  ],
+  "openapi": "../openapi/quorvel.yaml",
+  "topbarLinks": [{ "name": "Dashboard", "url": "https://app.quorvel.tech" }]
+}

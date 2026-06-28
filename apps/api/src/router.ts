@@ -20,10 +20,28 @@ export interface RawResponse {
 
 const notFound: RawResponse = { status: 404, body: { error: "not found", code: "not_found" } }
 
+// Resolve the org for a trusted dashboard request (Clerk org/user context).
+// The dashboard secret gates this path; the SDK keeps using Bearer keys.
+async function resolveDashboardOrg(
+	svc: QuorvelCloudService,
+	dashboardSecret: string | undefined,
+	req: RawRequest,
+): Promise<{ orgId: string }> {
+	if (!dashboardSecret || req.headers["x-dashboard-secret"] !== dashboardSecret) {
+		throw new ApiError("invalid dashboard secret", 401, "unauthorized")
+	}
+	return svc.authenticateDashboard(
+		req.headers["x-clerk-org-id"],
+		req.headers["x-clerk-user-id"],
+		req.headers["x-clerk-org-name"],
+	)
+}
+
 export async function handleRequest(
 	svc: QuorvelCloudService,
 	adminSecret: string | undefined,
 	req: RawRequest,
+	dashboardSecret?: string,
 ): Promise<RawResponse> {
 	try {
 		if (req.method === "GET" && req.path === "/health") {
@@ -49,8 +67,31 @@ export async function handleRequest(
 			}
 		}
 
-		// Everything else under /v1 needs a valid Bearer key.
-		const { orgId } = await svc.authenticate(req.headers["authorization"])
+		// Trusted dashboard backend mirrors/links a Clerk org -> internal org.
+		// Useful for explicit onboarding (returns the org's API key on first create).
+		if (req.method === "POST" && req.path === "/v1/orgs/provision") {
+			if (!dashboardSecret || req.headers["x-dashboard-secret"] !== dashboardSecret) {
+				return { status: 401, body: { error: "dashboard secret required", code: "unauthorized" } }
+			}
+			const body = req.body ?? {}
+			return {
+				status: 200,
+				body: await svc.provisionOrg({
+					...body,
+					clerkOrgId: req.headers["x-clerk-org-id"] ?? body.clerkOrgId,
+					clerkUserId: req.headers["x-clerk-user-id"] ?? body.clerkUserId,
+					orgName: req.headers["x-clerk-org-name"] ?? body.orgName,
+				}),
+			}
+		}
+
+		// Everything else under /v1 is org-scoped. Two auth paths:
+		//  - trusted dashboard service-auth (Clerk org/user context), or
+		//  - SDK Bearer API key (existing behavior).
+		const { orgId } =
+			req.headers["x-dashboard-secret"] !== undefined
+				? await resolveDashboardOrg(svc, dashboardSecret, req)
+				: await svc.authenticate(req.headers["authorization"])
 
 		if (req.path === "/v1/billing/checkout" && req.method === "POST") {
 			return { status: 200, body: await svc.createCheckout(orgId, req.body ?? {}) }
@@ -58,6 +99,55 @@ export async function handleRequest(
 
 		if (req.path === "/v1/usage" && req.method === "GET") {
 			return { status: 200, body: await svc.usage(orgId) }
+		}
+
+		// Actor (for audit trail) when the call comes through the dashboard.
+		const actorId = req.headers["x-clerk-user-id"]
+
+		if (req.path === "/v1/me" && req.method === "GET") {
+			return { status: 200, body: await svc.me(orgId) }
+		}
+
+		if (req.path === "/v1/account/keys") {
+			if (req.method === "GET") {
+				return { status: 200, body: await svc.listApiKeys(orgId) }
+			}
+			if (req.method === "POST") {
+				const b = req.body ?? {}
+				return {
+					status: 201,
+					body: await svc.createApiKey(orgId, {
+						name: b.name,
+						env: b.env,
+						scopes: b.scopes,
+						createdBy: actorId,
+					}),
+				}
+			}
+		}
+
+		const keyMatch = req.path.match(/^\/v1\/account\/keys\/([^/]+)(\/rotate)?$/)
+		if (keyMatch) {
+			const id = decodeURIComponent(keyMatch[1])
+			if (keyMatch[2] === "/rotate" && req.method === "POST") {
+				return { status: 201, body: await svc.rotateApiKey(orgId, id, actorId) }
+			}
+			if (!keyMatch[2] && (req.method === "DELETE" || req.method === "POST")) {
+				return { status: 200, body: await svc.revokeApiKey(orgId, id, actorId) }
+			}
+		}
+
+		if (req.path === "/v1/audit" && req.method === "GET") {
+			const limit = req.query.limit != null ? Number(req.query.limit) : undefined
+			return { status: 200, body: await svc.listAuditLog(orgId, limit) }
+		}
+
+		if (req.path === "/v1/billing/portal" && req.method === "POST") {
+			return { status: 200, body: await svc.createBillingPortal(orgId) }
+		}
+
+		if (req.path === "/v1/onboarding/sample" && req.method === "POST") {
+			return { status: 200, body: await svc.seedSampleData(orgId) }
 		}
 
 		if (req.path === "/v1/actions" && req.method === "POST") {

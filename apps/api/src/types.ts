@@ -17,6 +17,8 @@ export interface Org {
 	name: string
 	plan: string
 	clerkOrgId?: string | null
+	paddleCustomerId?: string | null
+	trialEndsAt?: string | null
 	createdAt: string
 }
 
@@ -29,6 +31,10 @@ export interface ApiKeyRecord {
 	createdAt: string
 	lastUsedAt?: string | null
 	revokedAt?: string | null
+	/** 'live' | 'test' */
+	env?: string
+	scopes?: string[]
+	createdBy?: string | null
 }
 
 /** Public action shape returned to clients — mirrors @quorvel/core ActionRecord. */
@@ -115,4 +121,36 @@ export interface ProvisionOrgResult {
 	created: boolean
 	apiKey?: string
 	keyPrefix?: string
+}
+
+/** Public, safe-to-return shape of an API key (never includes the hash). */
+export interface ApiKeyPublic {
+	id: string
+	orgId: string
+	name: string
+	keyPrefix: string
+	env: string
+	scopes: string[]
+	createdAt: string
+	lastUsedAt?: string | null
+	revokedAt?: string | null
+	createdBy?: string | null
+}
+
+export interface CreateApiKeyInput {
+	name?: string
+	env?: string
+	scopes?: string[]
+	createdBy?: string | null
+}
+
+/** A single audit-log entry: who did what, when. */
+export interface AuditEntry {
+	id: string
+	orgId: string
+	actorId?: string | null
+	action: string
+	target?: string | null
+	metadata?: unknown
+	createdAt: string
 }

@@ -1,5 +1,5 @@
 import { run, ApprovalRequiredError, PolicyDeniedError, listPendingApprovals } from "@quorvel/core"
-import type { Ledger } from "@quorvel/core"
+import type { LedgerStore as Ledger } from "@quorvel/core"
 import {
 	type QuorvelBinding,
 	type QuorvelInvocationContext,
@@ -83,7 +83,7 @@ export function withQuorvel<T extends OpenAIAgentTool>(
 				scope: resolve(binding.scope, args, ctx, "global"),
 				cost: resolve(binding.cost, args, ctx, 0),
 				policies: resolve(binding.policies, args, ctx, []),
-				execute: () => originalExecute(args, runContext),
+				execute: async () => originalExecute(args, runContext),
 			})
 		} catch (err) {
 			if (err instanceof ApprovalRequiredError) {

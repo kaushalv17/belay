@@ -2,6 +2,8 @@
 // Re-exports the public surface (so @quorvel/cloud-api can be imported as a
 // library by the dashboard's contract tests) and, when run directly, starts the
 // Fastify server with the full production wiring.
+import { fileURLToPath } from "node:url"
+import path from "node:path"
 import { Pool } from "pg"
 import { migrate } from "./migrate"
 import { buildServer } from "./server"
@@ -40,7 +42,14 @@ export async function main(): Promise<void> {
 	console.log(`belay-cloud-api listening on :${port}`)
 }
 
-const isMain = typeof process !== "undefined" && import.meta.url === `file://${process.argv[1]}`
+const isMain = (() => {
+	try {
+		if (typeof process === "undefined" || !process.argv[1]) return false
+		return path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1])
+	} catch {
+		return false
+	}
+})()
 if (isMain) {
 	main().catch((e) => {
 		console.error(e)

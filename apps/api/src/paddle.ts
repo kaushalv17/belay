@@ -34,6 +34,11 @@ export interface PlanStore {
 	setOrgPlan(orgId: string, plan: string): Promise<void>
 }
 
+/** Extended store the webhook can use to also persist the Paddle customer id. */
+export interface BillingStore extends PlanStore {
+	setOrgPaddleCustomer?(orgId: string, customerId: string): Promise<void>
+}
+
 export interface PaddleConfig {
 	apiKey: string
 	webhookSecret: string
@@ -200,7 +205,7 @@ export class PaddleBilling {
 	async handleWebhook(
 		rawBody: string,
 		signatureHeader: string | undefined,
-		store: PlanStore,
+		store: BillingStore,
 	): Promise<WebhookResult> {
 		if (!this.verifySignature(rawBody, signatureHeader)) {
 			throw new Error("invalid paddle signature")
@@ -213,6 +218,11 @@ export class PaddleBilling {
 		}
 		const eventType = event.event_type
 		const orgId = orgIdFromEvent(event)
+		// Persist the Paddle customer id so we can open the billing portal later.
+		const customerId = event.data?.customer_id
+		if (orgId && customerId && store.setOrgPaddleCustomer) {
+			await store.setOrgPaddleCustomer(orgId, customerId)
+		}
 		const plan = resolvePlan(event, this.priceToPlan)
 		if (!orgId || !plan) {
 			return { handled: false, eventType }
@@ -254,5 +264,34 @@ export class PaddleBilling {
 			plan,
 			priceId,
 		}
+	}
+
+	/**
+	 * Create a hosted customer-portal session (update card, view invoices,
+	 * change/cancel plan). Requires the org's Paddle customer id, which we
+	 * capture from subscription webhooks.
+	 */
+	async createBillingPortal(customerId: string): Promise<{ url: string }> {
+		const res = await this.fetchImpl(
+			`${this.apiBase}/customers/${encodeURIComponent(customerId)}/portal-sessions`,
+			{
+				method: "POST",
+				headers: {
+					authorization: `Bearer ${this.apiKey}`,
+					"content-type": "application/json",
+					"Paddle-Version": "1",
+				},
+				body: JSON.stringify({}),
+			},
+		)
+		if (!res.ok) {
+			const text = await res.text().catch(() => "")
+			throw new Error(`paddle portal session failed: ${res.status} ${text}`)
+		}
+		const json = await res.json()
+		const general = json?.data?.urls?.general
+		const url = general?.overview ?? general?.cancel ?? null
+		if (!url) throw new Error("paddle portal session returned no url")
+		return { url }
 	}
 }

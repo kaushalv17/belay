@@ -1,6 +1,6 @@
 import { tool as createLcTool } from "@langchain/core/tools"
 import { run, ApprovalRequiredError, PolicyDeniedError, listPendingApprovals } from "@quorvel/core"
-import type { Ledger } from "@quorvel/core"
+import type { LedgerStore as Ledger } from "@quorvel/core"
 import {
 	type QuorvelBinding,
 	type QuorvelInvocationContext,
@@ -85,7 +85,7 @@ export function withQuorvel<T extends LangChainToolLike>(
 				scope: resolve(binding.scope, args, ctx, "global"),
 				cost: resolve(binding.cost, args, ctx, 0),
 				policies: resolve(binding.policies, args, ctx, []),
-				execute: () => execute(args),
+				execute: async () => execute(args),
 			})
 		} catch (err) {
 			if (err instanceof ApprovalRequiredError) {
@@ -103,7 +103,7 @@ export function withQuorvel<T extends LangChainToolLike>(
 	return createLcTool(wrapped, {
 		name,
 		description: tool.description ?? "",
-		schema: tool.schema,
+		schema: tool.schema as any,
 	}) as unknown as T
 }
 

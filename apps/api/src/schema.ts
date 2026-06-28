@@ -59,4 +59,24 @@ create table if not exists memberships (
   primary key (clerk_user_id, org_id)
 );
 create index if not exists memberships_org_idx on memberships (org_id);
+
+-- Phase 1/2/4/7: self-serve API keys, billing customer link, audit log.
+alter table api_keys add column if not exists key_env text not null default 'live';
+alter table api_keys add column if not exists scopes  text not null default 'actions:read,actions:write';
+alter table api_keys add column if not exists created_by text;
+
+alter table orgs add column if not exists paddle_customer_id text;
+alter table orgs add column if not exists trial_ends_at timestamptz;
+create index if not exists orgs_paddle_customer_idx on orgs (paddle_customer_id);
+
+create table if not exists audit_log (
+  id          text primary key,
+  org_id      text not null references orgs(id) on delete cascade,
+  actor_id    text,
+  action      text not null,
+  target      text,
+  metadata    jsonb,
+  created_at  timestamptz not null default now()
+);
+create index if not exists audit_log_org_idx on audit_log (org_id, created_at desc);
 `

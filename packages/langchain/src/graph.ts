@@ -1,6 +1,6 @@
 import { ToolMessage } from "@langchain/core/messages"
 import { run, ApprovalRequiredError, PolicyDeniedError, listPendingApprovals } from "@quorvel/core"
-import type { Ledger } from "@quorvel/core"
+import type { LedgerStore as Ledger } from "@quorvel/core"
 import {
 	type QuorvelBinding,
 	type QuorvelInvocationContext,
@@ -70,7 +70,7 @@ export function createToolRunner(
 	async function runToolCall(call: ToolCall): Promise<ToolMessage> {
 		const name = call.name
 		const args = call.args ?? {}
-		const callId = call.id
+		const callId = call.id ?? ""
 		const handler = handlers[name]
 		if (!handler) {
 			return new ToolMessage({
@@ -88,7 +88,7 @@ export function createToolRunner(
 				scope: resolve(options.scope, args, ctx, "global"),
 				cost: resolve(options.cost, args, ctx, 0),
 				policies: resolve(options.policies, args, ctx, []),
-				execute: () => handler(args, { callId }),
+				execute: async () => handler(args, { callId }),
 			})
 			return new ToolMessage({ content: serialize(result), name, tool_call_id: callId })
 		} catch (err) {
@@ -143,7 +143,7 @@ export function guard(
 				scope: resolve(binding.scope, args, ictx, "global"),
 				cost: resolve(binding.cost, args, ictx, 0),
 				policies: resolve(binding.policies, args, ictx, []),
-				execute: () => handler(args, ctx),
+				execute: async () => handler(args, ctx),
 			})
 		} catch (err) {
 			if (err instanceof ApprovalRequiredError) {

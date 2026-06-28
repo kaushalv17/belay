@@ -1,0 +1,123 @@
+openapi: 3.1.0
+info:
+  title: Quorvel Cloud API
+  version: "1.0.0"
+  description: >
+    REST API for tracking agent actions, approvals, usage, billing, and
+    self-serve API key management. All /v1 endpoints are versioned; breaking
+    changes ship under a new version prefix.
+servers:
+  - url: https://api.quorvel.tech
+components:
+  securitySchemes:
+    BearerApiKey:
+      type: http
+      scheme: bearer
+      description: "Authorization: Bearer qrv_live_... (SDK / customer calls)"
+  schemas:
+    ApiKeyPublic:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        keyPrefix: { type: string }
+        env: { type: string, enum: [live, test] }
+        scopes: { type: array, items: { type: string } }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: string, format: date-time, nullable: true }
+        revokedAt: { type: string, format: date-time, nullable: true }
+    UsageSnapshot:
+      type: object
+      properties:
+        plan: { type: string }
+        period: { type: string }
+        used: { type: integer }
+        limit: { type: number }
+        remaining: { type: number }
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        code: { type: string }
+security:
+  - BearerApiKey: []
+paths:
+  /health:
+    get:
+      summary: Liveness probe
+      security: []
+      responses:
+        "200": { description: ok }
+  /v1/usage:
+    get:
+      summary: Current period usage for the caller's org
+      responses:
+        "200":
+          description: usage
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UsageSnapshot" }
+  /v1/me:
+    get:
+      summary: Org + usage summary for the signed-in org
+      responses:
+        "200": { description: ok }
+  /v1/account/keys:
+    get:
+      summary: List API keys for the org
+      responses:
+        "200":
+          description: keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ApiKeyPublic" }
+    post:
+      summary: Create a new API key (secret returned once)
+      responses:
+        "201": { description: created }
+  /v1/account/keys/{id}:
+    delete:
+      summary: Revoke an API key
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: revoked }
+  /v1/account/keys/{id}/rotate:
+    post:
+      summary: Rotate an API key (revoke + reissue)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "201": { description: rotated }
+  /v1/audit:
+    get:
+      summary: Audit log for the org
+      responses:
+        "200": { description: entries }
+  /v1/billing/checkout:
+    post:
+      summary: Create a Paddle checkout transaction
+      responses:
+        "200": { description: checkout }
+  /v1/billing/portal:
+    post:
+      summary: Create a Paddle hosted billing portal session
+      responses:
+        "200": { description: portal url }
+  /v1/actions:
+    get:
+      summary: List recent actions (optionally by status)
+      responses:
+        "200": { description: actions }
+    post:
+      summary: Track / insert a pending action
+      responses:
+        "200": { description: inserted }

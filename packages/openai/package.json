@@ -12,7 +12,9 @@
 			"import": "./dist/index.js"
 		}
 	},
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
 		"test": "tsx test/openai.test.ts",
@@ -26,9 +28,24 @@
 		"openai": "*"
 	},
 	"peerDependenciesMeta": {
-		"@openai/agents": { "optional": true },
-		"openai": { "optional": true }
+		"@openai/agents": {
+			"optional": true
+		},
+		"openai": {
+			"optional": true
+		}
 	},
-	"keywords": ["openai", "agents", "tool-calling", "idempotency", "reliability", "belay", "ai-agents"],
-	"license": "MIT"
+	"keywords": [
+		"openai",
+		"agents",
+		"tool-calling",
+		"idempotency",
+		"reliability",
+		"belay",
+		"ai-agents"
+	],
+	"license": "MIT",
+	"devDependencies": {
+		"typescript": "^5.5.0"
+	}
 }

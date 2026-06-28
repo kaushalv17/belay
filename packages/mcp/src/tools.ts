@@ -1,5 +1,5 @@
 import { run, ApprovalRequiredError, PolicyDeniedError, listPendingApprovals } from "@quorvel/core"
-import type { Ledger } from "@quorvel/core"
+import type { LedgerStore as Ledger } from "@quorvel/core"
 import {
 	type QuorvelBinding,
 	type QuorvelInvocationContext,
@@ -48,7 +48,7 @@ export function guard<A = any>(
 				scope: resolve(binding.scope, args, ctx, "global"),
 				cost: resolve(binding.cost, args, ctx, 0),
 				policies: resolve(binding.policies, args, ctx, []),
-				execute: () => handler(args, extra),
+				execute: async () => handler(args, extra),
 			})) as CallToolResult
 		} catch (err) {
 			if (err instanceof ApprovalRequiredError) {

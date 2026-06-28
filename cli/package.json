@@ -1,0 +1,10 @@
+{
+  "name": "@quorvel/cli",
+  "version": "0.1.0",
+  "description": "Quorvel CLI (qrv) - init, login, keys, tail logs, deploy (Phase 5 skeleton)",
+  "type": "module",
+  "bin": { "qrv": "bin/qrv.mjs" },
+  "engines": { "node": ">=18" },
+  "files": ["bin"],
+  "license": "MIT"
+}

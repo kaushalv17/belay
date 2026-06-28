@@ -1,0 +1,45 @@
+# Render blueprint for the Quorvel Cloud API (Phase 3.1: always-on paid instance).
+# Apply via Render -> New -> Blueprint, pointing at this repo. Secrets marked
+# sync:false must be filled in the Render dashboard (never committed).
+services:
+  - type: web
+    name: quorvel-api
+    runtime: node
+    plan: starter          # always-on; upgrade to standard/pro for autoscale
+    region: oregon
+    rootDir: apps/api
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    startCommand: node dist/index.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_DIRECT
+        sync: false
+      - key: QUORVEL_ADMIN_SECRET
+        sync: false
+      - key: DASHBOARD_SERVICE_SECRET
+        sync: false
+      - key: PADDLE_API_KEY
+        sync: false
+      - key: PADDLE_WEBHOOK_SECRET
+        sync: false
+      - key: PADDLE_PRICE_PRO
+        sync: false
+      - key: PADDLE_PRICE_SCALE
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: "Quorvel <hello@quorvel.tech>"
+      - key: QUORVEL_RATE_LIMIT_PER_MIN
+        value: 120
+      - key: SENTRY_DSN
+        sync: false

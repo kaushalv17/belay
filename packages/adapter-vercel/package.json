@@ -12,7 +12,10 @@
 			"import": "./dist/index.js"
 		}
 	},
-	"files": ["dist", "README.md"],
+	"files": [
+		"dist",
+		"README.md"
+	],
 	"sideEffects": false,
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
@@ -33,10 +36,15 @@
 		"zod": ">=3"
 	},
 	"peerDependenciesMeta": {
-		"ai": { "optional": true },
-		"zod": { "optional": true }
+		"ai": {
+			"optional": true
+		},
+		"zod": {
+			"optional": true
+		}
 	},
 	"devDependencies": {
+		"@types/node": "^26.0.1",
 		"tsx": "^4.0.0",
 		"typescript": "^5.4.0"
 	},
