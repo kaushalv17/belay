@@ -1,24 +1,22 @@
-// Applies the idempotent schema at boot.
+// Applies all pending migrations at boot, via the versioned runner. Uses one
+// dedicated client so the advisory lock + per-migration transactions share a
+// single session.
 import type { Pool } from "pg"
-import { SCHEMA_SQL } from "./schema"
-import { DEAD_LETTERS_SQL } from "./deadLetters"
-
-// Phase 2 hardening: Idempotency-Key replay store. Kept here (not in schema.ts)
-// so it ships as an additive, idempotent migration.
-const IDEMPOTENCY_SQL = `create table if not exists idempotency_keys (
-    org_id text not null,
-    idem_key text not null,
-    fingerprint text not null,
-    method text not null,
-    path text not null,
-    status_code int,
-    response_body jsonb,
-    created_at timestamptz not null default now(),
-    primary key (org_id, idem_key)
-);`
+import { MIGRATIONS, runMigrations, type MigrationClient } from "./migrations"
 
 export async function migrate(pool: Pool): Promise<void> {
-    await pool.query(SCHEMA_SQL)
-    await pool.query(IDEMPOTENCY_SQL)
-    await pool.query(DEAD_LETTERS_SQL)
+    const allowDrift = process.env.QUORVEL_MIGRATIONS_ALLOW_DRIFT === "1"
+    const client = await pool.connect()
+    try {
+        const { applied, skipped } = await runMigrations(
+            client as unknown as MigrationClient,
+            MIGRATIONS,
+            { allowDrift, log: (msg) => console.log(`[migrate] ${msg}`) },
+        )
+        console.log(
+            `[migrate] done -- ${applied.length} applied, ${skipped.length} already up to date`,
+        )
+    } finally {
+        client.release()
+    }
 }
