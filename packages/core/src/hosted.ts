@@ -52,7 +52,7 @@ export class HostedLedger implements LedgerStore {
       throw new Error("HostedLedger: apiKey is required")
     }
     this.apiKey = opts.apiKey
-    this.baseUrl = (opts.baseUrl ?? "https://api.belay.dev").replace(/\/+$/, "")
+    this.baseUrl = (opts.baseUrl ?? "https://api.quorvel.tech").replace(/\/+$/, "")
     const f = opts.fetch ?? globalThis.fetch
     if (typeof f !== "function") {
       throw new Error(
