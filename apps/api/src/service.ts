@@ -4,6 +4,7 @@ import { actionCreated, actionTransition } from "./events"
 import { currentPeriod, planLimit, type UsageLimiter, type UsageSnapshot } from "./billing"
 import { generateApiKey, hashApiKey, keyPrefix, newId } from "./keys"
 import { toRecord, type Store } from "./store"
+import type { DeadLetterRecord, DeadLetterStore } from "./deadLetters"
 import type { PaddleBilling, CheckoutResult, WebhookResult } from "./paddle"
 import type { EventBus } from "./bus"
 import type {
@@ -67,17 +68,23 @@ export interface ServiceDeps {
     bus?: EventBus
     limiter?: UsageLimiter
     billing?: PaddleBilling
+    deadLetters?: DeadLetterStore
+    deadLetterReplay?: (rec: DeadLetterRecord) => Promise<void>
 }
 
 export class QuorvelCloudService {
     private readonly bus?: EventBus
     private readonly limiter?: UsageLimiter
     private readonly billing?: PaddleBilling
+    private readonly deadLetters?: DeadLetterStore
+    private readonly deadLetterReplay?: (rec: DeadLetterRecord) => Promise<void>
 
     constructor(private readonly store: Store, deps: ServiceDeps = {}) {
         this.bus = deps.bus
         this.limiter = deps.limiter
         this.billing = deps.billing
+        this.deadLetters = deps.deadLetters
+        this.deadLetterReplay = deps.deadLetterReplay
     }
 
     async issueApiKey(input: IssueKeyInput): Promise<IssueKeyResult> {
@@ -504,5 +511,41 @@ export class QuorvelCloudService {
         }
         await this.audit(orgId, null, "onboarding.sample_seeded", undefined, { created })
         return { created }
+    }
+
+    // --- Dead-letter queue (Phase 3 reliability) ------------------------------
+    async listDeadLetters(orgId: string, limit = 100): Promise<DeadLetterRecord[]> {
+        if (!this.deadLetters) return []
+        return this.deadLetters.listDeadLetters(orgId, limit)
+    }
+
+    async getDeadLetter(orgId: string, id: string): Promise<DeadLetterRecord> {
+        const rec = this.deadLetters
+            ? await this.deadLetters.getDeadLetter(orgId, id)
+            : undefined
+        if (!rec) throw new ApiError("dead letter not found", 404, "not_found")
+        return rec
+    }
+
+    async replayDeadLetter(orgId: string, id: string): Promise<{ replayed: boolean }> {
+        const rec = await this.getDeadLetter(orgId, id)
+        if (!this.deadLetterReplay) throw badRequest("dead-letter replay is not configured")
+        // Re-runs ONLY the failed subscriber; if it throws again the row is kept.
+        await this.deadLetterReplay(rec)
+        if (this.deadLetters) await this.deadLetters.deleteDeadLetter(orgId, id)
+        await this.audit(orgId, null, "dead_letter.replayed", id, {
+            subscriber: rec.subscriber,
+            eventType: rec.eventType,
+        })
+        return { replayed: true }
+    }
+
+    async discardDeadLetter(orgId: string, id: string): Promise<{ discarded: boolean }> {
+        const ok = this.deadLetters
+            ? await this.deadLetters.deleteDeadLetter(orgId, id)
+            : false
+        if (!ok) throw new ApiError("dead letter not found", 404, "not_found")
+        await this.audit(orgId, null, "dead_letter.discarded", id)
+        return { discarded: true }
     }
 }

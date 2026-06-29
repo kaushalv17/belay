@@ -136,6 +136,29 @@ export async function handleRequest(
                 return { status: 200, body: await svc.listAuditLog(orgId, limit) }
             }
 
+            // Dead-letter queue: operator visibility + manual replay/discard.
+            if (req.path === "/v1/dlq" && req.method === "GET") {
+                const limit = req.query.limit != null ? Number(req.query.limit) : undefined
+                return { status: 200, body: await svc.listDeadLetters(orgId, limit) }
+            }
+
+            const dlqMatch = req.path.match(/^\/v1\/dlq\/([^/]+)(\/replay)?$/)
+            if (dlqMatch) {
+                const id = decodeURIComponent(dlqMatch[1])
+                if (dlqMatch[2] === "/replay") {
+                    if (req.method === "POST") {
+                        return { status: 200, body: await svc.replayDeadLetter(orgId, id) }
+                    }
+                } else {
+                    if (req.method === "GET") {
+                        return { status: 200, body: await svc.getDeadLetter(orgId, id) }
+                    }
+                    if (req.method === "DELETE") {
+                        return { status: 200, body: await svc.discardDeadLetter(orgId, id) }
+                    }
+                }
+            }
+
             if (req.path === "/v1/billing/portal" && req.method === "POST") {
                 return { status: 200, body: await svc.createBillingPortal(orgId) }
             }
