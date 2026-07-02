@@ -3,6 +3,7 @@ import { serverClient } from "../lib/server-client"
 import { StatusBadge } from "../components/StatusBadge"
 import { approveAction, rejectAction } from "./actions"
 import { UpgradeButton } from "../components/UpgradeButton"
+import { UsageBanner } from "../components/UsageBanner"
 
 // Always render fresh — this is a live operational queue.
 export const dynamic = "force-dynamic"
@@ -19,6 +20,8 @@ export default async function ApprovalsPage() {
 		<>
 			<h1>Approvals</h1>
 			<p className="subtle">Actions your agents paused for human review, newest first.</p>
+
+            <UsageBanner usage={usage} />
 
 			<div className="usage-bar">
 				<div className="stat">

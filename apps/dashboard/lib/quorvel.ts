@@ -45,11 +45,14 @@ export interface ActionRecord {
 }
 
 export interface UsageSnapshot {
-	plan: string
-	period: string
-	used: number
-	limit: number
-	remaining: number
+  plan: string
+  period: string
+  used: number
+  limit: number
+  remaining: number
+  percentUsed: number
+  nearLimit: boolean
+  over: boolean
 }
 
 export interface CheckoutResult {
