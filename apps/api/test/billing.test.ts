@@ -149,6 +149,39 @@ await (async () => {
         assert.equal(await u.get("o", currentPeriod()), 0)
     })
 
+    section("plan overage")
+
+    await it("free plan hard-caps: reserve denies at the limit (no overage)", async () => {
+        const u = new MemUsageStore()
+        await u.increment("o", currentPeriod(), 1000)
+        const meter = new UsageMeter(u, plans("free"))
+        const v = await meter.reserve("o")
+        assert.equal(v.allowed, false)
+        assert.equal(await u.get("o", currentPeriod()), 1000)
+        const snap = await meter.usage("o")
+        assert.equal(snap.overage, 0)
+    })
+
+    await it("a paid plan bursts past its limit and reports the overage units", async () => {
+        const u = new MemUsageStore()
+        await u.increment("o", currentPeriod(), 100000)
+        const meter = new UsageMeter(u, plans("pro"))
+        const v = await meter.reserve("o")
+        assert.equal(v.allowed, true)
+        assert.equal(await u.get("o", currentPeriod()), 100001)
+        const snap = await meter.usage("o")
+        assert.equal(snap.over, true)
+        assert.equal(snap.overage, 1)
+    })
+
+    await it("unlimited plans never report overage", async () => {
+        const u = new MemUsageStore()
+        await u.increment("o", currentPeriod(), 1000000)
+        const meter = new UsageMeter(u, plans("scale"))
+        const snap = await meter.usage("o")
+        assert.equal(snap.overage, 0)
+    })
+
     section("StripeMeter")
 
     await it("reports usage with form-encoded body + bearer auth", async () => {

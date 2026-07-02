@@ -21,12 +21,13 @@ export interface PlanFeatures {
   maxAlertRules: number
   retentionDays: number
   maxSeats: number
+  allowOverage: boolean
 }
 
 export const PLAN_FEATURES: Record<string, PlanFeatures> = {
-  free: { maxAlertRules: 1, retentionDays: 7, maxSeats: 2 },
-  pro: { maxAlertRules: 10, retentionDays: 30, maxSeats: 10 },
-  scale: { maxAlertRules: Infinity, retentionDays: 365, maxSeats: Infinity },
+  free: { maxAlertRules: 1, retentionDays: 7, maxSeats: 2, allowOverage: false },
+  pro: { maxAlertRules: 10, retentionDays: 30, maxSeats: 10, allowOverage: true },
+  scale: { maxAlertRules: Infinity, retentionDays: 365, maxSeats: Infinity, allowOverage: true },
 }
 
 export function planFeatures(plan: string | undefined): PlanFeatures {
@@ -97,6 +98,7 @@ export interface UsageSnapshot {
     percentUsed: number
     nearLimit: boolean
     over: boolean
+    overage: number
 }
 export interface UsageVerdict {
 	allowed: boolean
@@ -138,7 +140,7 @@ export class UsageMeter implements UsageLimiter {
         const period = currentPeriod()
         // Atomically claim a slot; the store returns the post-increment count.
         const next = await this.store.increment(orgId, period, 1)
-        if (limit !== Infinity && next > limit) {
+        if (limit !== Infinity && next > limit && !planFeatures(plan).allowOverage) {
             // Over the limit: roll back the reservation and deny.
             await this.store.increment(orgId, period, -1)
             return {
@@ -162,8 +164,9 @@ export class UsageMeter implements UsageLimiter {
 		const remaining = limit === Infinity ? Infinity : Math.max(0, limit - used)
 		const percentUsed = limit === Infinity || limit === 0 ? 0 : Math.min(1, used / limit)
         const over = limit !== Infinity && used >= limit
+        const overage = limit === Infinity ? 0 : Math.max(0, used - limit)
         const nearLimit = limit !== Infinity && !over && percentUsed >= NEAR_LIMIT_THRESHOLD
-        return { plan, period, used, limit, remaining, percentUsed, nearLimit, over }
+        return { plan, period, used, limit, remaining, percentUsed, nearLimit, over, overage }
 	}
 
 	onEvent = async (e: DomainEvent): Promise<void> => {

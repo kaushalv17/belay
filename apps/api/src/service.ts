@@ -461,6 +461,7 @@ export class QuorvelCloudService {
             percentUsed: 0,
             nearLimit: false,
             over: false,
+            overage: 0,
         }
     }
 
