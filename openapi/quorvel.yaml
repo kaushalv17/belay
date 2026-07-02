@@ -125,3 +125,245 @@ paths:
       summary: Track / insert a pending action
       responses:
         "200": { description: inserted }
+  /v1/actions/{key}:
+    parameters:
+      - in: path
+        name: key
+        required: true
+        schema: { type: string }
+        description: The action idempotency key.
+    get:
+      summary: Get a single action by idempotency key
+      responses:
+        "200": { description: action }
+        "404": { description: not found }
+  /v1/actions/{key}/events:
+    parameters:
+      - in: path
+        name: key
+        required: true
+        schema: { type: string }
+    get:
+      summary: Timeline of events for a single action
+      responses:
+        "200": { description: run timeline }
+        "404": { description: not found }
+  /v1/actions/{key}/running:
+    parameters:
+      - in: path
+        name: key
+        required: true
+        schema: { type: string }
+    post:
+      summary: Mark an action as running
+      responses:
+        "204": { description: updated }
+  /v1/actions/{key}/succeeded:
+    parameters:
+      - in: path
+        name: key
+        required: true
+        schema: { type: string }
+    post:
+      summary: Mark an action as succeeded
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                result: {}
+      responses:
+        "204": { description: updated }
+  /v1/actions/{key}/failed:
+    parameters:
+      - in: path
+        name: key
+        required: true
+        schema: { type: string }
+    post:
+      summary: Mark an action as failed
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error: { type: string }
+      responses:
+        "204": { description: updated }
+  /v1/actions/{key}/awaiting-approval:
+    parameters:
+      - in: path
+        name: key
+        required: true
+        schema: { type: string }
+    post:
+      summary: Park an action awaiting human approval
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        "204": { description: updated }
+  /v1/actions/{key}/approved:
+    parameters:
+      - in: path
+        name: key
+        required: true
+        schema: { type: string }
+    post:
+      summary: Approve a parked action
+      responses:
+        "204": { description: updated }
+  /v1/actions/{key}/rejected:
+    parameters:
+      - in: path
+        name: key
+        required: true
+        schema: { type: string }
+    post:
+      summary: Reject a parked action
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        "204": { description: updated }
+  /v1/actions/{key}/denied:
+    parameters:
+      - in: path
+        name: key
+        required: true
+        schema: { type: string }
+    post:
+      summary: Deny a parked action by policy
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        "204": { description: updated }
+  /v1/events:
+    get:
+      summary: Cross-run event feed for the org, newest first
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: action
+          description: Filter by an action idempotency key.
+          schema: { type: string }
+        - in: query
+          name: since
+          schema: { type: string, format: date-time }
+        - in: query
+          name: limit
+          schema: { type: integer }
+      responses:
+        "200": { description: events }
+  /v1/metrics:
+    get:
+      summary: Aggregated run metrics plus the live usage snapshot
+      parameters:
+        - in: query
+          name: since
+          schema: { type: string, format: date-time }
+        - in: query
+          name: until
+          schema: { type: string, format: date-time }
+      responses:
+        "200": { description: metrics }
+  /v1/stats:
+    post:
+      summary: Summed usage and cost stats, optionally scoped by tool or scope
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scope: { type: string }
+                tool: { type: string }
+                since: { type: string, format: date-time }
+      responses:
+        "200": { description: stats }
+  /v1/dlq:
+    get:
+      summary: List dead-lettered deliveries for the org
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer }
+      responses:
+        "200": { description: dead letters }
+  /v1/dlq/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    get:
+      summary: Get a single dead-letter entry
+      responses:
+        "200": { description: dead letter }
+    delete:
+      summary: Discard a dead-letter entry without replaying
+      responses:
+        "200": { description: discarded }
+  /v1/dlq/{id}/replay:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    post:
+      summary: Replay a dead-lettered delivery
+      responses:
+        "200": { description: replayed }
+  /v1/alert-rules:
+    get:
+      summary: List alert routing rules for the org
+      responses:
+        "200": { description: rules }
+    post:
+      summary: Create an alert routing rule
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "201": { description: created }
+  /v1/alert-rules/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    post:
+      summary: Update an alert routing rule
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "200": { description: updated }
+    delete:
+      summary: Delete an alert routing rule
+      responses:
+        "200": { description: deleted }
+  /v1/onboarding/sample:
+    post:
+      summary: Seed sample data for onboarding
+      responses:
+        "200": { description: seeded }
