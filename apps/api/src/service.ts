@@ -320,7 +320,19 @@ export class QuorvelCloudService {
 	}
 
 	/** Cross-run recent event feed (newest first), for the activity view. */
-	async listEvents(
+	private retentionFloorIso(retentionDays: number): string | null {
+        if (!Number.isFinite(retentionDays)) return null
+        return new Date(Date.now() - retentionDays * 86400000).toISOString()
+    }
+
+    private clampSince(since: string | null | undefined, retentionDays: number): string | null {
+        const floor = this.retentionFloorIso(retentionDays)
+        if (floor === null) return since ?? null
+        if (!since) return floor
+        return since > floor ? since : floor
+    }
+
+    async listEvents(
 		orgId: string,
 		filter: {
 			status?: ActionStatus
@@ -330,7 +342,10 @@ export class QuorvelCloudService {
 		} = {},
 	): Promise<ActionEvent[]> {
 		if (!this.actionEventLog) return []
-		return this.actionEventLog.listRecent(orgId, filter)
+		const org = await this.store.getOrg(orgId)
+        const features = planFeatures(org?.plan)
+        const clampedSince = this.clampSince(filter.since, features.retentionDays)
+        return this.actionEventLog.listRecent(orgId, { ...filter, since: clampedSince })
 	}
 
 	/** Aggregate run metrics for a window, merged with the current usage snapshot. */
@@ -338,7 +353,10 @@ export class QuorvelCloudService {
 		orgId: string,
 		window: { since?: string | null; until?: string | null } = {},
 	): Promise<EventMetrics & { usage: UsageSnapshot }> {
-		const base: EventMetrics = this.actionEventLog
+		const org = await this.store.getOrg(orgId)
+        const features = planFeatures(org?.plan)
+        window = { ...window, since: this.clampSince(window.since, features.retentionDays) }
+        const base: EventMetrics = this.actionEventLog
 			? await this.actionEventLog.metrics(orgId, window)
 			: {
 				since: window.since ?? null,

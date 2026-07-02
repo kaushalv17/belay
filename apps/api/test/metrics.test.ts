@@ -134,4 +134,41 @@ await it("HTTP: GET /v1/metrics returns aggregates + usage", async () => {
     assert(b.usage.plan === "free", "usage embedded in HTTP response")
 })
 
+section("metrics: plan retention")
+
+const daysAgo = (n: number) => new Date(Date.now() - n * 86400000).toISOString()
+
+await it("free plan clamps event history to its 7-day retention", async () => {
+    const store = new MemStore()
+    const log = new MemActionEventLog()
+    await store.insertOrg({ id: "ret1", name: "o", plan: "free", createdAt: daysAgo(999) })
+    const svc = new QuorvelCloudService(store, { actionEventLog: log })
+    await log.append({ orgId: "ret1", idempotencyKey: "fresh", type: "created", status: "pending", at: daysAgo(2) })
+    await log.append({ orgId: "ret1", idempotencyKey: "stale", type: "created", status: "pending", at: daysAgo(30) })
+    const events = await svc.listEvents("ret1", {})
+    assert(events.length === 1, "only the in-retention event is visible")
+    assert(events[0].idempotencyKey === "fresh", "the 30-day-old event is clamped out")
+})
+
+await it("a higher plan retains older history", async () => {
+    const store = new MemStore()
+    const log = new MemActionEventLog()
+    await store.insertOrg({ id: "ret2", name: "o", plan: "scale", createdAt: daysAgo(999) })
+    const svc = new QuorvelCloudService(store, { actionEventLog: log })
+    await log.append({ orgId: "ret2", idempotencyKey: "stale", type: "created", status: "pending", at: daysAgo(30) })
+    const events = await svc.listEvents("ret2", {})
+    assert(events.length === 1, "scale retention keeps the 30-day-old event")
+})
+
+await it("metrics respects the plan retention window", async () => {
+    const store = new MemStore()
+    const log = new MemActionEventLog()
+    await store.insertOrg({ id: "ret3", name: "o", plan: "free", createdAt: daysAgo(999) })
+    const svc = new QuorvelCloudService(store, { actionEventLog: log })
+    await log.append({ orgId: "ret3", idempotencyKey: "stale", type: "created", status: "pending", at: daysAgo(30) })
+    await log.append({ orgId: "ret3", idempotencyKey: "stale", type: "transition", status: "succeeded", at: daysAgo(30) })
+    const m = await svc.metrics("ret3", {})
+    assert(m.runs === 0, "the stale run is outside the free retention window")
+})
+
 summary()
