@@ -117,6 +117,37 @@ export interface MetricsWindow {
     until?: string
 }
 
+// ---- Phase 4-D: configurable alert rules ----
+
+export type AlertTrigger = "awaiting_approval" | "denied" | "failed"
+
+export interface AlertRuleRecord {
+    id: string
+    orgId: string
+    name: string
+    trigger: AlertTrigger
+    scope: string | null
+    channels: string[]
+    enabled: boolean
+    createdAt: string
+}
+
+export interface CreateAlertRuleInput {
+    name: string
+    trigger: AlertTrigger
+    scope?: string | null
+    channels: string[]
+    enabled?: boolean
+}
+
+export interface UpdateAlertRuleInput {
+    name?: string
+    trigger?: AlertTrigger
+    scope?: string | null
+    channels?: string[]
+    enabled?: boolean
+}
+
 // ---- Phase 1/2: API keys, account, billing portal, onboarding ----
 
 export interface ApiKeyPublic {
@@ -295,7 +326,29 @@ export class QuorvelClient {
         return this.request("GET", `/v1/metrics${qs ? `?${qs}` : ""}`)
     }
 
-		// ---- Phase 1/2 account surface ----
+		    // ---- Phase 4-D: alert rules ----
+
+    /** List the org's configured alert rules (newest first). */
+    listAlertRules(): Promise<AlertRuleRecord[]> {
+        return this.request("GET", `/v1/alert-rules`)
+    }
+
+    /** Create an alert rule; the server assigns the id. Returns the created rule. */
+    createAlertRule(input: CreateAlertRuleInput): Promise<AlertRuleRecord> {
+        return this.request("POST", `/v1/alert-rules`, input)
+    }
+
+    /** Patch an alert rule; only the provided fields change. */
+    updateAlertRule(id: string, patch: UpdateAlertRuleInput): Promise<AlertRuleRecord> {
+        return this.request("POST", `/v1/alert-rules/${encodeURIComponent(id)}`, patch)
+    }
+
+    /** Delete an alert rule. */
+    deleteAlertRule(id: string): Promise<{ deleted: boolean }> {
+        return this.request("DELETE", `/v1/alert-rules/${encodeURIComponent(id)}`)
+    }
+
+    // ---- Phase 1/2 account surface ----
 
 	/** Org + current-period usage for the signed-in org (billing summary). */
 	me(): Promise<MeResult> {

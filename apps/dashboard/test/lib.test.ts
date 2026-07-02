@@ -171,5 +171,48 @@ void (async () => {
         assert.equal(calls[0].url, "https://api.example.com/v1/metrics")
     })
 
-    	summary()
+    	    section("QuorvelClient alert rules")
+
+    await it("listAlertRules GETs /v1/alert-rules", async () => {
+        const rule = { id: "alr_1", orgId: "org_1", name: "approvals", trigger: "awaiting_approval", scope: null, channels: ["slack"], enabled: true, createdAt: "2026-01-01T00:00:00.000Z" }
+        const { fetchImpl, calls } = fakeFetch(() => ({ status: 200, body: [rule] }))
+        const client = new QuorvelClient({ baseUrl: "https://api.example.com", apiKey: "k", fetchImpl })
+        const rows = await client.listAlertRules()
+        assert.equal(calls[0].url, "https://api.example.com/v1/alert-rules")
+        assert.equal(calls[0].init?.method, "GET")
+        assert.equal(rows.length, 1)
+        assert.equal(rows[0].trigger, "awaiting_approval")
+    })
+
+    await it("createAlertRule POSTs the input body and parses the created rule", async () => {
+        const rule = { id: "alr_1", orgId: "org_1", name: "n", trigger: "failed", scope: null, channels: ["slack"], enabled: true, createdAt: "2026-01-01T00:00:00.000Z" }
+        const { fetchImpl, calls } = fakeFetch(() => ({ status: 201, body: rule }))
+        const client = new QuorvelClient({ baseUrl: "https://api.example.com", apiKey: "k", fetchImpl })
+        const created = await client.createAlertRule({ name: "n", trigger: "failed", channels: ["slack"] })
+        assert.equal(calls[0].url, "https://api.example.com/v1/alert-rules")
+        assert.equal(calls[0].init?.method, "POST")
+        assert.deepEqual(JSON.parse(calls[0].init!.body!), { name: "n", trigger: "failed", channels: ["slack"] })
+        assert.equal(created.id, "alr_1")
+    })
+
+    await it("updateAlertRule POSTs the patch to /:id and encodes the id", async () => {
+        const rule = { id: "a/b", orgId: "org_1", name: "n", trigger: "failed", scope: null, channels: ["email"], enabled: false, createdAt: "2026-01-01T00:00:00.000Z" }
+        const { fetchImpl, calls } = fakeFetch(() => ({ status: 200, body: rule }))
+        const client = new QuorvelClient({ baseUrl: "https://api.example.com", apiKey: "k", fetchImpl })
+        const upd = await client.updateAlertRule("a/b", { enabled: false, channels: ["email"] })
+        assert.equal(calls[0].url, "https://api.example.com/v1/alert-rules/a%2Fb")
+        assert.equal(calls[0].init?.method, "POST")
+        assert.deepEqual(JSON.parse(calls[0].init!.body!), { enabled: false, channels: ["email"] })
+        assert.equal(upd.enabled, false)
+    })
+
+    await it("deleteAlertRule DELETEs /:id and parses the result", async () => {
+        const { fetchImpl, calls } = fakeFetch(() => ({ status: 200, body: { deleted: true } }))
+        const client = new QuorvelClient({ baseUrl: "https://api.example.com", apiKey: "k", fetchImpl })
+        const res = await client.deleteAlertRule("alr_1")
+        assert.equal(calls[0].url, "https://api.example.com/v1/alert-rules/alr_1")
+        assert.equal(calls[0].init?.method, "DELETE")
+        assert.deepEqual(res, { deleted: true })
+    })
+summary()
 })()
