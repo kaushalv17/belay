@@ -30,7 +30,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 							<Link href="/">Approvals</Link>
 							<Link href="/agents">Agents</Link>
 							<SignedIn>
-								<Link href="/settings/keys">API keys</Link>
+								<Link href="/settings/alerts">Alerts</Link>
+                                <Link href="/settings/keys">API keys</Link>
 								<Link href="/settings/billing">Billing</Link>
 								<Link href="/settings/members">Members</Link>
 							</SignedIn>
