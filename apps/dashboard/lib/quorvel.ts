@@ -59,6 +59,64 @@ export interface CheckoutResult {
 	priceId: string
 }
 
+// ---- Phase 4: observability (event timeline + run metrics) ----
+
+export type ActionEventType = "created" | "transition"
+
+export interface ActionEvent {
+    id: string
+    idempotencyKey: string
+    type: ActionEventType
+    status: ActionStatus
+    attempt: number
+    reason?: string
+    error?: string
+    at: string
+}
+
+export interface EventOutcomes {
+    succeeded: number
+    failed: number
+    denied: number
+    rejected: number
+}
+
+export interface LatencyStats {
+    count: number
+    avg: number
+    p50: number
+    p95: number
+}
+
+export interface EventMetrics {
+    since: string | null
+    until: string | null
+    runs: number
+    events: number
+    outcomes: EventOutcomes
+    terminalRuns: number
+    errorRate: number
+    latencyMs: LatencyStats
+}
+
+export type MetricsResult = EventMetrics & { usage: UsageSnapshot }
+
+export interface RunTimeline {
+    action: ActionRecord
+    events: ActionEvent[]
+}
+
+export interface EventsFilter {
+    status?: ActionStatus
+    action?: string
+    since?: string
+}
+
+export interface MetricsWindow {
+    since?: string
+    until?: string
+}
+
 // ---- Phase 1/2: API keys, account, billing portal, onboarding ----
 
 export interface ApiKeyPublic {
@@ -211,7 +269,33 @@ export class QuorvelClient {
 		return this.request("POST", `/v1/orgs/provision`, {})
 	}
 
-	// ---- Phase 1/2 account surface ----
+	    // ---- Phase 4: observability ----
+
+    /** Cross-run event feed (newest first). Filter by status, action key, or ISO `since`. */
+    listEvents(filter: EventsFilter = {}): Promise<ActionEvent[]> {
+        const q = new URLSearchParams()
+        if (filter.status) q.set("status", filter.status)
+        if (filter.action) q.set("action", filter.action)
+        if (filter.since) q.set("since", filter.since)
+        const qs = q.toString()
+        return this.request("GET", `/v1/events${qs ? `?${qs}` : ""}`)
+    }
+
+    /** Full event timeline for one run: the action row plus its ordered events. */
+    runTimeline(key: string): Promise<RunTimeline> {
+        return this.request("GET", `/v1/actions/${encodeURIComponent(key)}/events`)
+    }
+
+    /** Aggregate run metrics (+ current usage) over an optional time window. */
+    metrics(window: MetricsWindow = {}): Promise<MetricsResult> {
+        const q = new URLSearchParams()
+        if (window.since) q.set("since", window.since)
+        if (window.until) q.set("until", window.until)
+        const qs = q.toString()
+        return this.request("GET", `/v1/metrics${qs ? `?${qs}` : ""}`)
+    }
+
+		// ---- Phase 1/2 account surface ----
 
 	/** Org + current-period usage for the signed-in org (billing summary). */
 	me(): Promise<MeResult> {

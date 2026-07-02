@@ -32,7 +32,7 @@ export default async function AgentTimelinePage({
 					{actions.map((a) => (
 						<div className="event" key={a.idempotencyKey}>
 							<div>
-								<span className="card-title">{a.tool}</span>{" "}
+								<Link className="card-title" href={`/agents/${encodeURIComponent(scope)}/${encodeURIComponent(a.idempotencyKey)}`}>{a.tool}</Link>{" "}
 								<StatusBadge status={a.status} />
 							</div>
 							<div className="when">
