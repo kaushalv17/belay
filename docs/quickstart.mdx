@@ -1,34 +1,74 @@
 ---
 title: Quickstart
-description: Track your first agent action in 5 minutes.
+description: Track your first agent action over REST in 5 minutes.
 ---
+
+This quickstart uses the **Cloud API** directly over HTTP (and the `qrv` CLI).
+No SDK required. For framework wrappers, see [Integrations](/integrations).
 
 ## 1. Create an API key
 
 Sign in at [app.quorvel.tech](https://app.quorvel.tech), then
-**Settings -> API keys -> Create key**. Copy the secret (shown once).
+**Settings -> API keys -> Create key**. Copy the secret - it is shown only once.
 
-## 2. Install the SDK
+Keys look like `qrv_live_...` (production) or `qrv_test_...` (test).
+
+## 2. Set your key
 
 ```bash
-npm install @quorvel/sdk
+export QUORVEL_API_KEY="qrv_live_..."
+export QUORVEL_API_URL="https://api.quorvel.tech"
 ```
 
 ## 3. Track an action
 
-```ts
-import { Quorvel } from "@quorvel/sdk"
+Every tracked unit of work is an **action**. The `idempotencyKey` makes it
+exactly-once - retry the same call and you get the original result back, not a
+duplicate.
 
-const qrv = new Quorvel({ apiKey: process.env.QUORVEL_API_KEY })
-
-await qrv.track({
-  idempotencyKey: "order-123",
-  tool: "refund.issue",
-  args: { amount: 5000 },
-})
+```bash
+curl -sS -X POST "$QUORVEL_API_URL/v1/actions" \
+  -H "Authorization: Bearer $QUORVEL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "idempotencyKey": "order-123",
+    "tool": "refund.issue",
+    "args": { "amount": 5000 }
+  }'
 ```
 
-## 4. See it in the dashboard
+Send the exact same request again and it returns the same action instead of
+creating a second one.
 
-Open the dashboard - your action appears in the activity list, and any action
-that requires approval shows up in the Approvals queue.
+## 4. Check your usage
+
+```bash
+curl -sS "$QUORVEL_API_URL/v1/usage" \
+  -H "Authorization: Bearer $QUORVEL_API_KEY"
+```
+
+```json
+{
+  "plan": "free",
+  "period": "2026-07",
+  "used": 1,
+  "limit": 1000,
+  "remaining": 999,
+  "percentUsed": 0.001,
+  "nearLimit": false,
+  "over": false,
+  "overage": 0
+}
+```
+
+## 5. See it in the dashboard
+
+Open [app.quorvel.tech](https://app.quorvel.tech) - your action appears in the
+activity feed, and anything that requires sign-off shows up in the **Approvals**
+queue.
+
+## Next
+
+- [CLI](/cli) - do all of this from your terminal with `qrv`.
+- [Integrations](/integrations) - wrap your OpenAI / LangChain / MCP / Vercel
+  tools instead of calling REST by hand.

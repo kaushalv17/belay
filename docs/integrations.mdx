@@ -1,0 +1,197 @@
+---
+title: Integrations
+description: Drop-in reliability wrappers for popular agent frameworks.
+---
+
+The Quorvel SDK wraps your existing tool calls so each one is exactly-once,
+durably logged, budget-governed, and human-approvable - while keeping the tool's
+original name, description, and schema. Pick the adapter for your framework.
+
+Most adapters share the same **binding options**: `scope` (idempotency + budget
+scope), `cost`, and `policies` (`budget`, `rateLimit`, `requireApprovalWhen`,
+`denyWhen`) - each a static value or a function of `(args, ctx)`. Policy
+precedence is **deny > require_approval > allow**. Parked and denied actions
+come back as structured results your agent loop can handle, never thrown
+exceptions.
+
+Every adapter needs a **ledger** - use `InMemoryLedger` for dev and
+`PostgresLedger` for production so idempotency and approvals survive restarts.
+
+## Core (`@quorvel/core`)
+
+The engine every adapter builds on: deterministic idempotency keys, the durable
+ledger (`InMemoryLedger` / `PostgresLedger`), the policy engine (`budget`,
+`rateLimit`, `requireApprovalWhen`, `denyWhen`), and the approvals inbox
+(`approve`, `reject`, `listPendingApprovals`).
+
+```bash
+pnpm add @quorvel/core
+```
+
+```ts
+import { idempotencyKey } from "@quorvel/core"
+
+// Same tool + args + scope => same key, every time.
+const key = idempotencyKey({
+  tool: "refund",
+  args: { amount: 1000, chargeId: "ch_123" },
+  scope: "user-42",
+})
+```
+
+You will rarely call core directly - pick the adapter for your framework below.
+
+## OpenAI (`@quorvel/openai`)
+
+Works with both the OpenAI Agents SDK and classic function calling.
+
+```bash
+pnpm add @quorvel/openai @quorvel/core
+```
+
+**Agents SDK** - wrap a tool; it stays a drop-in replacement:
+
+```ts
+import { Agent, tool } from "@openai/agents"
+import { PostgresLedger, requireApprovalWhen } from "@quorvel/core"
+import { withQuorvel } from "@quorvel/openai"
+
+const ledger = new PostgresLedger(pool)
+
+const refund = withQuorvel(ledger, tool({
+  name: "refund",
+  description: "Refund a charge",
+  parameters: z.object({ chargeId: z.string(), amount: z.number() }),
+  execute: ({ chargeId, amount }) => stripe.refunds.create({ charge: chargeId, amount }),
+}), {
+  scope: (a) => `user-${a.userId}`,
+  cost: (a) => a.amount / 100,
+  policies: [requireApprovalWhen((c) => c.cost > 100, "refund over $100")],
+})
+
+const agent = new Agent({ name: "Support", tools: [refund] })
+```
+
+**Classic function calling** - dispatch `tool_calls` through a runner:
+
+```ts
+import { createToolRunner } from "@quorvel/openai"
+import { rateLimit } from "@quorvel/core"
+
+const runner = createToolRunner(ledger, { refund, sendEmail }, {
+  scope: (a) => `user-${a.userId}`,
+  policies: [rateLimit({ limit: 5, windowMs: 60_000 })],
+})
+
+const msg = completion.choices[0].message
+if (msg.tool_calls) {
+  const toolMessages = await runner.runToolCalls(msg.tool_calls)
+  messages.push(msg, ...toolMessages)
+}
+```
+
+For the Responses API, pass `{ format: "responses" }`.
+
+## LangChain / LangGraph (`@quorvel/langchain`)
+
+```bash
+pnpm add @quorvel/langchain @quorvel/core @langchain/core @langchain/langgraph
+```
+
+```ts
+import { tool } from "@langchain/core/tools"
+import { ToolNode } from "@langchain/langgraph/prebuilt"
+import { PostgresLedger, requireApprovalWhen } from "@quorvel/core"
+import { withQuorvel } from "@quorvel/langchain"
+
+const ledger = new PostgresLedger(process.env.DATABASE_URL!)
+
+const refund = withQuorvel(ledger, tool(
+  async ({ chargeId, amount }) => stripe.refunds.create({ charge: chargeId, amount }),
+  { name: "refund", description: "Refund a charge", schema: refundSchema },
+), {
+  scope: (a) => `customer-${a.chargeId}`,
+  cost: (a) => a.amount / 100,
+  policies: [requireApprovalWhen((c) => c.cost > 100, "refund over $100")],
+})
+
+const toolNode = new ToolNode([refund]) // drop-in, nothing else changes
+```
+
+Or guard the manual loop with `createToolRunner(ledger, tools, options)` /
+`guard(ledger, name, handler, binding)`.
+
+## MCP (`@quorvel/mcp`)
+
+Guard a Model Context Protocol server so every `tools/call` is exactly-once.
+
+```bash
+pnpm add @quorvel/mcp @modelcontextprotocol/sdk
+```
+
+```ts
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+import { withQuorvelServer, InMemoryLedger, rateLimit, requireApprovalWhen } from "@quorvel/mcp"
+
+const ledger = new InMemoryLedger()
+const server = withQuorvelServer(new McpServer({ name: "billing", version: "1.0.0" }), ledger, {
+  scope: (a) => `user-${a.userId}`,
+  cost: (a) => a.amountUsd ?? 0,
+  policies: [
+    rateLimit({ limit: 100, windowMs: 60_000 }),
+    requireApprovalWhen((c) => c.cost > 100, "charge over $100 needs a human"),
+  ],
+})
+
+// Register tools as usual - each is now guarded.
+server.registerTool("charge_card", { description, inputSchema }, handler)
+```
+
+Guard a single tool with
+`registerQuorvelTool(server, ledger, name, config, handler, binding)`.
+
+## Vercel AI SDK (`@quorvel/adapter-vercel`)
+
+```bash
+pnpm add @quorvel/adapter-vercel ai zod
+```
+
+```ts
+import { generateText, tool } from "ai"
+import { openai } from "@ai-sdk/openai"
+import { z } from "zod"
+import { createQuorvel } from "@quorvel/adapter-vercel"
+
+const quorvel = createQuorvel({
+  budget: { maxCostCents: 500 },
+  perTool: {
+    refund: {
+      requiresApproval: (a) => a.amountCents > 10_000,
+      maxAttempts: 1, // never retry a refund
+    },
+  },
+})
+
+const tools = quorvel.wrap({
+  search: tool({ description: "Search the catalog", parameters: z.object({ q: z.string() }), execute: async ({ q }) => catalog.search(q) }),
+  refund: tool({ description: "Issue a refund", parameters: z.object({ orderId: z.string(), amountCents: z.number() }), execute: async (a) => payments.refund(a) }),
+})
+
+await generateText({ model: openai("gpt-4o"), tools, prompt: "..." })
+```
+
+Approvals use `ApprovalRequiredError` (interrupt mode) or a blocking `wait`
+mode - catch the error, surface it to a reviewer, then `quorvel.approve(id)` and
+re-run the same call.
+
+## Approvals
+
+Every adapter re-exports the approvals inbox from core:
+
+```ts
+import { listPendingApprovals, approve, reject } from "@quorvel/openai" // or /langchain, /mcp
+
+for (const p of await listPendingApprovals(ledger)) {
+  await approve(ledger, p.idempotencyKey) // the next identical call executes, exactly once
+}
+```

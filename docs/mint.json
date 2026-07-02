@@ -5,7 +5,8 @@
   "favicon": "/favicon.png",
   "navigation": [
     { "group": "Getting started", "pages": ["introduction", "quickstart"] },
-    { "group": "Concepts", "pages": ["introduction"] }
+    { "group": "Guides", "pages": ["integrations", "cli"] },
+    { "group": "API Reference", "openapi": "../openapi/quorvel.yaml" }
   ],
   "openapi": "../openapi/quorvel.yaml",
   "topbarLinks": [{ "name": "Dashboard", "url": "https://app.quorvel.tech" }]

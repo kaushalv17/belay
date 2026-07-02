@@ -1,0 +1,47 @@
+---
+title: CLI
+description: The qrv command-line tool.
+---
+
+`qrv` is a small CLI over the Cloud API. It reads `QUORVEL_API_KEY` (and the
+optional `QUORVEL_API_URL`) from your environment.
+
+## Run
+
+```bash
+node cli/bin/qrv.mjs <command>
+```
+
+A global `qrv` binary will be available once the CLI is published to npm.
+
+## Configure
+
+```bash
+export QUORVEL_API_KEY="qrv_live_..."
+# optional - defaults to https://api.quorvel.tech
+export QUORVEL_API_URL="https://api.quorvel.tech"
+```
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `qrv usage` | Show current-period usage for your org |
+| `qrv keys` | List your API keys |
+| `qrv tail` | Show the 20 most recent actions |
+
+```bash
+$ node cli/bin/qrv.mjs usage
+{
+  "plan": "free",
+  "period": "2026-07",
+  "used": 1,
+  "limit": 1000
+}
+
+$ node cli/bin/qrv.mjs tail
+2026-07-03T02:10:00Z  succeeded  refund.issue
+```
+
+<Note>`qrv init`, `qrv login`, and `qrv deploy` are placeholders on the roadmap
+and not yet functional.</Note>

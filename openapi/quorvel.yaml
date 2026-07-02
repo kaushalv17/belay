@@ -34,6 +34,10 @@ components:
         used: { type: integer }
         limit: { type: number }
         remaining: { type: number }
+        percentUsed: { type: number }
+        nearLimit: { type: boolean }
+        over: { type: boolean }
+        overage: { type: number }
     Error:
       type: object
       properties:

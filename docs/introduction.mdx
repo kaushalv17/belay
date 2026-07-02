@@ -3,18 +3,35 @@ title: Introduction
 description: What Quorvel is and how it works.
 ---
 
-Quorvel is an agent-reliability platform: track every agent action, gate risky
-ones behind human approval, enforce per-plan usage, and see it all in a
-multi-tenant dashboard.
+Quorvel is an agent-reliability platform. Wrap your AI agent's risky actions and
+they happen **exactly once**, get **logged and replayable**, can be **paused for
+human approval**, and **never blow a budget** - without rebuilding your app
+around a heavy orchestrator.
+
+## Two ways to use Quorvel
+
+- **SDK (self-hosted reliability)** - drop-in wrappers for OpenAI, LangChain,
+  MCP, and the Vercel AI SDK that add idempotency, retries, budgets, and
+  approval gates around your tool calls. See [Integrations](/integrations).
+- **Cloud API (managed backend + dashboard)** - a hosted REST API that tracks
+  every action, enforces per-plan usage, gates approvals, and powers the
+  multi-tenant dashboard at [app.quorvel.tech](https://app.quorvel.tech). See
+  the [Quickstart](/quickstart).
 
 ## Core concepts
 
 - **Action** - a tracked unit of agent work with a status lifecycle
-  (pending -> running -> succeeded / failed / awaiting_approval -> approved / rejected).
+  (pending -> running -> succeeded / failed, or awaiting_approval -> approved /
+  rejected).
 - **Org** - a tenant. Every API key and action belongs to exactly one org.
-- **API key** - `qrv_live_*` or `qrv_test_*`, created/rotated/revoked self-serve.
+- **API key** - `qrv_live_*` or `qrv_test_*`, created / rotated / revoked
+  self-serve.
 - **Approval** - an action paused for a human to approve or reject.
+- **Usage** - per-period action count measured against your plan limit, with
+  near-limit and overage signals.
 
 ## Next
 
-Head to the [Quickstart](/quickstart).
+- [Quickstart](/quickstart) - track your first action over REST in 5 minutes.
+- [Integrations](/integrations) - wrap OpenAI / LangChain / MCP / Vercel tools.
+- [CLI](/cli) - the `qrv` command-line tool.
