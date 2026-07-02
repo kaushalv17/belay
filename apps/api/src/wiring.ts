@@ -51,6 +51,7 @@ import {
     type AlertRuleQueryable,
 } from "./alertRules"
 import { DEFAULT_RULES } from "./alerts"
+import { UsageNotifier, MemNotifyStateStore } from "./usageNotifier"
 
 export interface ServiceDepsBundle {
     deps: {
@@ -127,6 +128,25 @@ export function buildDeps(
             }),
         )
     }
+    const usageNotifyTo = env.USAGE_ALERT_EMAIL_TO ?? env.ALERT_EMAIL_TO
+    // Usage notifier: email once at >=80% and once over the plan limit. Reuses
+    // the Resend transport; recipient defaults to the ops address. Swap in a
+    // per-customer resolver here once org email is stored.
+    const usageNotifier =
+      env.RESEND_API_KEY && env.ALERT_EMAIL_FROM && usageNotifyTo
+        ? new UsageNotifier({
+            usage: (orgId) => meter.usage(orgId),
+            transports: [
+              new EmailTransport({
+                apiKey: env.RESEND_API_KEY,
+                from: env.ALERT_EMAIL_FROM,
+                to: usageNotifyTo,
+              }),
+            ],
+            state: new MemNotifyStateStore(),
+          })
+        : undefined
+
     const alertRuleStore: AlertRuleStore = opts.pool
         ? new PgAlertRuleStore(opts.pool as unknown as AlertRuleQueryable)
         : new MemAlertRuleStore()
@@ -148,6 +168,7 @@ export function buildDeps(
         { name: "alerts", handle: dispatcher.handle },
 		{ name: "event-log", handle: makeActionEventSink(actionEventLog) },
     ]
+    if (usageNotifier) named.push({ name: "usage-notifier", handle: usageNotifier.handle })
     const byName = new Map(named.map((n) => [n.name, n.handle]))
 
     let close: () => Promise<void> = async () => {}
