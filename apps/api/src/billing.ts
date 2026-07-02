@@ -17,6 +17,22 @@ export function planLimit(plan: string | undefined): number {
 	return PLANS[plan] ?? PLANS.free
 }
 
+export interface PlanFeatures {
+  maxAlertRules: number
+  retentionDays: number
+  maxSeats: number
+}
+
+export const PLAN_FEATURES: Record<string, PlanFeatures> = {
+  free: { maxAlertRules: 1, retentionDays: 7, maxSeats: 2 },
+  pro: { maxAlertRules: 10, retentionDays: 30, maxSeats: 10 },
+  scale: { maxAlertRules: Infinity, retentionDays: 365, maxSeats: Infinity },
+}
+
+export function planFeatures(plan: string | undefined): PlanFeatures {
+  if (plan === undefined) return PLAN_FEATURES.free
+  return PLAN_FEATURES[plan] ?? PLAN_FEATURES.free
+}
 export const NEAR_LIMIT_THRESHOLD = 0.8
 
 export function currentPeriod(now: Date = new Date()): string {

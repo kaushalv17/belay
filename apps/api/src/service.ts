@@ -1,7 +1,7 @@
 // Framework-agnostic business logic. Talks only to a Store.
 import { createHash } from "node:crypto"
 import { actionCreated, actionTransition } from "./events"
-import { currentPeriod, planLimit, type UsageLimiter, type UsageSnapshot } from "./billing"
+import { currentPeriod, planFeatures, planLimit, type UsageLimiter, type UsageSnapshot } from "./billing"
 import { generateApiKey, hashApiKey, keyPrefix, newId } from "./keys"
 import { toRecord, type Store } from "./store"
 import type { ActionEvent, ActionEventLog, EventMetrics } from "./actionEvents"
@@ -633,6 +633,16 @@ export class QuorvelCloudService {
         if (!name) throw badRequest("name is required")
         const trigger = this.normalizeTrigger(input.trigger)
         const channels = this.normalizeChannels(input.channels)
+        const org = await this.store.getOrg(orgId)
+        const features = planFeatures(org?.plan)
+        const existing = await this.alertRuleStore.list(orgId)
+        if (existing.length >= features.maxAlertRules) {
+            throw new ApiError(
+                `alert rule limit reached for the ${org?.plan ?? "free"} plan (max ${features.maxAlertRules})`,
+                403,
+                "plan_limit",
+            )
+        }
         const rule = await this.alertRuleStore.create(orgId, newId("alr"), {
             name,
             trigger,

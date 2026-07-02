@@ -1,5 +1,6 @@
-// Phase 4-D - HTTP CRUD for alert rules. End-to-end through handleRequest with
-// a MemStore + MemAlertRuleStore, authenticating with a real issued key.
+// Phase 4-D - HTTP CRUD for alert rules + plan-feature gating. End-to-end
+// through handleRequest with a MemStore + MemAlertRuleStore, authenticating
+// with a real issued key.
 import { assert, it, section, summary } from "./_assert"
 import { handleRequest, type RawRequest } from "../src/router"
 import { QuorvelCloudService } from "../src/service"
@@ -25,6 +26,15 @@ async function call(svc: QuorvelCloudService, req: Partial<RawRequest>) {
 async function authFor(svc: QuorvelCloudService) {
     const { apiKey } = await svc.issueApiKey({})
     return { authorization: `Bearer ${apiKey}` }
+}
+
+async function authForPlan(svc: QuorvelCloudService, plan: string) {
+    const { apiKey } = await svc.issueApiKey({ plan })
+    return { authorization: `Bearer ${apiKey}` }
+}
+
+function mkRule(name: string) {
+    return { name, trigger: "failed", channels: ["slack"] }
 }
 
 console.log("belay-cloud-api alert-rules HTTP tests")
@@ -114,6 +124,29 @@ await (async () => {
             body: { name: "mine", trigger: "failed", channels: ["slack"] },
         })
         assert.equal(((await call(svc, { method: "GET", path: "/v1/alert-rules", headers: b })).body as any[]).length, 0)
+    })
+
+    section("plan-feature gating")
+
+    await it("enforces the free-plan alert-rule cap (max 1)", async () => {
+        const svc = newSvc()
+        const auth = await authFor(svc)
+        const first = await call(svc, { method: "POST", path: "/v1/alert-rules", headers: auth, body: mkRule("one") })
+        assert.equal(first.status, 201)
+        const second = await call(svc, { method: "POST", path: "/v1/alert-rules", headers: auth, body: mkRule("two") })
+        assert.equal(second.status, 403)
+        // the denied rule never landed - still exactly one
+        assert.equal(((await call(svc, { method: "GET", path: "/v1/alert-rules", headers: auth })).body as any[]).length, 1)
+    })
+
+    await it("a higher plan lifts the cap (pro allows several)", async () => {
+        const svc = newSvc()
+        const auth = await authForPlan(svc, "pro")
+        for (const n of ["a", "b", "c"]) {
+            const res = await call(svc, { method: "POST", path: "/v1/alert-rules", headers: auth, body: mkRule(n) })
+            assert.equal(res.status, 201)
+        }
+        assert.equal(((await call(svc, { method: "GET", path: "/v1/alert-rules", headers: auth })).body as any[]).length, 3)
     })
 
     summary()
